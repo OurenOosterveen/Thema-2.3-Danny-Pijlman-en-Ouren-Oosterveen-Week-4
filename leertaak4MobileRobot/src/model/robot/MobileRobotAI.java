@@ -26,8 +26,12 @@ public class MobileRobotAI implements Runnable {
 
 	private final OccupancyMap map;
 	private final MobileRobot robot;
+    private final int MIN_DISTANCE_FROM_WALL = 15;
+    private final int MAX_DISTANCE_PER_STEP = 20;
+    private final double SCAN_DISTANCE = 100.0;
 
 	private boolean running;
+    private boolean wallFound;
 
 	public MobileRobotAI(MobileRobot robot, OccupancyMap map) {
 		this.map = map;
@@ -43,10 +47,14 @@ public class MobileRobotAI implements Runnable {
 	 */
 	public void run() {
 		String result;
-		this.running = true;
+        this.wallFound = false;
+
+        double distance;
+        int degree;
+
 		double position[] = new double[3];
 		double measures[] = new double[360];
-		while (running) {
+		while (map.mapDiscovered()) {
 			try {
 
 				PipedInputStream pipeIn = new PipedInputStream();
@@ -58,141 +66,88 @@ public class MobileRobotAI implements Runnable {
 //      ases where a variable value is never used after its assignment, i.e.:
 				System.out.println("intelligence running");
 
-				robot.sendCommand("R1.GETPOS");
-				result = input.readLine();
-				parsePosition(result, position);
+				getPosition(input, position);
+				scanPosition(input, measures, position);
 
-				robot.sendCommand("L1.SCAN");
-				result = input.readLine();
-				parseMeasures(result, measures);
-				map.drawLaserScan(position, measures);
+                if(!wallFound)
+                {
+                    distance = SCAN_DISTANCE;
+                    degree = 0;
+                    // look at all the degree and save if the measurement is closer than
+                    // the scanner is looking at
+                    for(int i=0; i<360;i++)
+                    {
+                        if(measures[i]<distance)
+                        {
+                            distance = measures[i];
+                            degree = i;
+                        }
+                    }
+                    //if no obstacle found, just move forward
+                    if(distance == SCAN_DISTANCE)
+                    {
+                        robot.sendCommand("P1.MOVEFW 100");
+                        result = input.readLine();
+                    }
+                    else
+                    {
+                        // else turn right to the degree
+                        int obstacle = (int) distance;
 
-				robot.sendCommand("P1.MOVEBW 60");
-				result = input.readLine();
+                        robot.sendCommand("P1.ROTATERIGHT " + degree);
+                        result = input.readLine();
 
-				robot.sendCommand("R1.GETPOS");
-				result = input.readLine();
-				parsePosition(result, position);
+                        robot.sendCommand("P1.MOVEFW " + (obstacle - 15));
+                        result = input.readLine();
 
-				robot.sendCommand("L1.SCAN");
-				result = input.readLine();
-				parseMeasures(result, measures);
-				map.drawLaserScan(position, measures);
+                        robot.sendCommand("P1.ROTATELEFT 90");
+                        result = input.readLine();
 
-				robot.sendCommand("P1.ROTATERIGHT 90");
-				result = input.readLine();
+                        wallFound = true;
+                    }
+                }
+                else
+                {
+                    if(measures[0] < 2 && measures[90] != SCAN_DISTANCE)
+                    {
+                        robot.sendCommand("P1.ROTATELEFT 90");
+                        result = input.readLine();
+                    }
+                    else if(measures[90] != SCAN_DISTANCE)
+                    {
+                        int temp = (int) measures[0];
+                        if(measures[0] > 30)
+                            temp = 30;
 
-				robot.sendCommand("P1.MOVEFW 100");
-				result = input.readLine();
+                        robot.sendCommand("P1.MOVEFW " + (temp - 1));
+                        result = input.readLine();
 
-				robot.sendCommand("R1.GETPOS");
-				result = input.readLine();
-				parsePosition(result, position);
+                    }
+                    else if(measures[90] == SCAN_DISTANCE)
+                    {
+                        if(measures[0] < 30)
+                        {
+                            int temp = (int) measures[0];
+                            if(temp > 30){ temp = 30; }
+                            robot.sendCommand("P1.MOVEFW " + (temp - 1));
+                            result = input.readLine();
 
-				robot.sendCommand("L1.SCAN");
-				result = input.readLine();
-				parseMeasures(result, measures);
-				map.drawLaserScan(position, measures);
+                        }
+                        else
+                        {
+                            robot.sendCommand("P1.MOVEFW " + MAX_DISTANCE_PER_STEP);
+                            result = input.readLine();
+                        }
 
-				robot.sendCommand("P1.ROTATELEFT 45");
-				result = input.readLine();
+                        robot.sendCommand("P1.ROTATERIGHT 90");
+                        result = input.readLine();
 
-				robot.sendCommand("P1.MOVEFW 70");
-				result = input.readLine();
-
-				robot.sendCommand("R1.GETPOS");
-				result = input.readLine();
-				parsePosition(result, position);
-
-				robot.sendCommand("L1.SCAN");
-				result = input.readLine();
-				parseMeasures(result, measures);
-				map.drawLaserScan(position, measures);
-
-				robot.sendCommand("P1.MOVEFW 70");
-				result = input.readLine();
-
-				robot.sendCommand("P1.ROTATERIGHT 45");
-				result = input.readLine();
-
-				robot.sendCommand("R1.GETPOS");
-				result = input.readLine();
-				parsePosition(result, position);
-
-				robot.sendCommand("L1.SCAN");
-				result = input.readLine();
-				parseMeasures(result, measures);
-				map.drawLaserScan(position, measures);
-
-				robot.sendCommand("P1.MOVEFW 90");
-				result = input.readLine();
-
-				robot.sendCommand("R1.GETPOS");
-				result = input.readLine();
-				parsePosition(result, position);
-
-				robot.sendCommand("L1.SCAN");
-				result = input.readLine();
-				parseMeasures(result, measures);
-				map.drawLaserScan(position, measures);
-
-				robot.sendCommand("P1.ROTATERIGHT 45");
-				result = input.readLine();
-
-				robot.sendCommand("P1.MOVEFW 90");
-				result = input.readLine();
-
-				robot.sendCommand("R1.GETPOS");
-				result = input.readLine();
-				parsePosition(result, position);
-
-				robot.sendCommand("L1.SCAN");
-				result = input.readLine();
-				parseMeasures(result, measures);
-				map.drawLaserScan(position, measures);
-
-				robot.sendCommand("P1.ROTATERIGHT 45");
-				result = input.readLine();
-
-				robot.sendCommand("P1.MOVEFW 100");
-				result = input.readLine();
-
-				robot.sendCommand("R1.GETPOS");
-				result = input.readLine();
-				parsePosition(result, position);
-
-				robot.sendCommand("L1.SCAN");
-				result = input.readLine();
-				parseMeasures(result, measures);
-				map.drawLaserScan(position, measures);
-
-				robot.sendCommand("P1.ROTATERIGHT 90");
-				result = input.readLine();
-
-				robot.sendCommand("P1.MOVEFW 80");
-				result = input.readLine();
-
-				robot.sendCommand("R1.GETPOS");
-				result = input.readLine();
-				parsePosition(result, position);
-
-				robot.sendCommand("L1.SCAN");
-				result = input.readLine();
-				parseMeasures(result, measures);
-				map.drawLaserScan(position, measures);
-
-				robot.sendCommand("P1.MOVEFW 100");
-				result = input.readLine();
-
-				robot.sendCommand("R1.GETPOS");
-				result = input.readLine();
-				parsePosition(result, position);
-
-				robot.sendCommand("L1.SCAN");
-				result = input.readLine();
-				parseMeasures(result, measures);
-				map.drawLaserScan(position, measures);
-				this.running = false;
+                        int temp = (int) measures[270];
+                        if(temp > 30) { temp = 30; }
+                        robot.sendCommand("P1.MOVEFW " + (temp - 1));
+                        result = input.readLine();
+                    }
+                }
 			} catch (IOException ioe) {
 				System.err.println("execution stopped");
 				running = false;
@@ -222,28 +177,52 @@ public class MobileRobotAI implements Runnable {
 	}
 
 	private void parseMeasures(String value, double measures[]) {
-		for (int i = 0; i < 360; i++) {
-			measures[i] = 100.0;
-		}
-		if (value.length() >= 5) {
-			value = value.substring(5);  // removes the "SCAN " keyword
+        for (int i = 0; i < 360; i++) {
+            measures[i] = 100.0;
+        }
+        if (value.length() >= 5) {
+            value = value.substring(5);  // removes the "SCAN " keyword
 
-			StringTokenizer tokenizer = new StringTokenizer(value, " ");
+            StringTokenizer tokenizer = new StringTokenizer(value, " ");
 
-			double distance;
-			int direction;
-			while (tokenizer.hasMoreTokens()) {
-				distance = Double.parseDouble(tokenizer.nextToken().substring(2));
-				direction = (int) Math.round(Math.toDegrees(Double.parseDouble(tokenizer.nextToken().substring(2))));
-				if (direction == 360) {
-					direction = 0;
-				}
-				measures[direction] = distance;
-				// Printing out all the degrees and what it encountered.
-				System.out.println("direction = " + direction + " distance = " + distance);
-			}
-		}
-	}
+            double distance;
+            int direction;
+            while (tokenizer.hasMoreTokens()) {
+                distance = Double.parseDouble(tokenizer.nextToken().substring(2));
+                direction = (int) Math.round(Math.toDegrees(Double.parseDouble(tokenizer.nextToken().substring(2))));
+                if (direction == 360) {
+                    direction = 0;
+                }
+                measures[direction] = distance;
+                // Printing out all the degrees and what it encountered.
+                //System.out.println("direction = " + direction + " distance = " + distance);
+            }
+        }
+        for (int i = 0; i < 360; i ++) {
+            System.out.println("direction = " + i + " Distance = " + measures[i]);
+        }
+    }
 
+    private void getPosition(BufferedReader input, double position[])
+    {
+        try {
+            robot.sendCommand("R1.GETPOS");
+            String result = input.readLine();
+            parsePosition(result, position);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
+    private void scanPosition(BufferedReader input, double[] measures, double[] position)
+    {
+        try {
+            robot.sendCommand("L1.SCAN");
+            String result = input.readLine();
+            parseMeasures(result, measures);
+            map.drawLaserScan(position, measures);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

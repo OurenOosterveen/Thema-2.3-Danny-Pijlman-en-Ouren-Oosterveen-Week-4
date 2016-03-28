@@ -188,4 +188,41 @@ public class OccupancyMap {
 		}
 	}
 
+	public boolean mapDiscovered(){
+		ArrayList<Character> empty = new ArrayList<Character>();
+		ArrayList<Character> first = new ArrayList<Character>();
+		int check = 0;
+		boolean discovered = true;
+		for(int i = 0; i < grid.length; i++){
+			for(int j = 0; j < grid[i].length; j++){
+				first.add(grid[i][j]);
+				if(grid[i][j] == EMPTY){
+					if(grid[i-1][j]==UNKNOWN || grid[i][j-1]==UNKNOWN)
+					{
+						empty.add('n');
+					}
+				}
+			}
+		}
+		for(int i=0;i < first.size();i++)
+		{
+			if(first.get(i)==UNKNOWN)
+			{
+				check++;
+			}
+		}
+		if(empty.contains(UNKNOWN))
+		{
+			discovered=true;
+		}
+		else if(check == first.size())
+		{
+			discovered=true;
+		}
+		else
+		{
+			discovered=false;
+		}
+		return discovered;
+	}
 }
