@@ -246,3 +246,4 @@ public class Laser extends Device {
 		}
 	}
 }
+
